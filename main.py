@@ -164,10 +164,9 @@ def getOfferDetails(url):
     except Exception as e:
         print("Error in getting offer details", e)
 
-def processOffer(houseOffer, dateOfUnlisting):
+def processOffer(ahref, dateOfUnlisting):
     con = sqlite3.connect("offers.db")
     cur = con.cursor()
-    ahref = houseOffer.find_all("a")[0].get("href")
     if not cur.execute("SELECT EXISTS(SELECT 1 FROM offers WHERE Link=?);", (ahref,)).fetchone()[0]:
         offer_ = getOfferDetails(ahref)
         updateDatabase(cur, offer_.link, offer_.name, offer_.price, offer_.rentierName, offer_.rentierPhone, offer_.rentierEmail, offer_.descriptionTable, offer_.details, offer_.lat, offer_.long, offer_.date, dateOfUnlisting)
@@ -195,10 +194,16 @@ def main():
     updateDelist.execute("UPDATE offers SET DateOfUnlisting = 0 WHERE DateOfUnlisting = ?;",(dateOfUnlisting,))
     con.commit()
 
+    ahrefs = []
+    for offer in listings:
+        tag = offer.find("a")
+        if tag and tag.get("href"):
+            ahrefs.append(tag.get("href"))
+
 
     freeze_support()
     with Pool(processes=10) as pool:
-        results = [pool.apply_async(processOffer, args=(houseOffer, dateOfUnlisting)) for houseOffer in listings]
+        results = [pool.apply_async(processOffer, args=(houseOffer, dateOfUnlisting)) for houseOffer in ahrefs]
         final_results = [r.get() for r in results]
         print(final_results)
     today = str(datetime.now().date())
